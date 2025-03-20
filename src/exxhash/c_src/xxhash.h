@@ -5614,6 +5614,24 @@ XXH_mult32to64_add64(xxh_u64 lhs, xxh_u64 rhs, xxh_u64 acc)
     __asm__("umaddl %x0, %w1, %w2, %x3" : "=r" (ret) : "r" (lhs), "r" (rhs), "r" (acc));
     return ret;
 }
+#elif defined(__riscv) && (__riscv_xlen == 64)
+XXH_FORCE_INLINE xxh_u64
+XXH_mult32to64_add64(xxh_u64 lhs, xxh_u64 rhs, xxh_u64 acc)
+{
+            xxh_u64 ret;
+                __asm__ (
+                        "slli t0, %1, 32 \n\t"  // Shift lhs left 32 bits
+                        "srli t0, t0, 32 \n\t"  // Shift back, mask to 32-bit
+                        "slli t1, %2, 32 \n\t"  // Shift rhs left 32 bits
+                        "srli t1, t1, 32 \n\t"  // Shift back, mask to 32-bit
+                        "mul %0, t0, t1 \n\t"   // Multiply masked values
+                        "add %0, %0, %3"        // Add acc
+                        : "=r" (ret)
+                        : "r" (lhs), "r" (rhs), "r" (acc)
+                        : "t0", "t1"            // Clobbered registers
+             );
+             return ret;
+}
 #else
 XXH_FORCE_INLINE xxh_u64
 XXH_mult32to64_add64(xxh_u64 lhs, xxh_u64 rhs, xxh_u64 acc)
